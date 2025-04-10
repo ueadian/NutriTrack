@@ -39,6 +39,7 @@ export default function Home() {
 
   const [imageType, setImageType] = useState<string | null>(null); // "label" or "barcode"
   const [apiResponse, setApiResponse] = useState<any>(null);
+  const [apiSource, setApiSource] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const calculateProgress = (intake: number, target: number) => {
@@ -63,6 +64,7 @@ export default function Home() {
 
   const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setApiResponse(null);
+    setApiSource(null);
     setErrorMessage(null);
     setImageType(null);
     setExtractedData(null);
@@ -76,6 +78,7 @@ export default function Home() {
 
         setImageType('label');
         setApiResponse('Processing image as label...');
+        setApiSource('GenAI');
 
         // Call the AI function to extract nutrition data
         try {
@@ -106,10 +109,12 @@ export default function Home() {
 
   const processBarcode = async (imageUrl: string) => {
     setApiResponse(null);
+    setApiSource(null);
     setErrorMessage(null);
     setImageType('barcode');
     setExtractedData(null);
     setApiResponse('Processing image as barcode...');
+    setApiSource('Open Food Facts API');
 
     try {
       console.log('Image recognized as barcode');
@@ -397,7 +402,7 @@ export default function Home() {
         {imageType && <p>Image Type: {imageType}</p>}
         {apiResponse && (
           <div>
-            <p>API Response:</p>
+            <p>API Response ({apiSource}):</p>
             <pre>{JSON.stringify(apiResponse, null, 2)}</pre>
           </div>
         )}
@@ -462,3 +467,4 @@ export default function Home() {
     </div>
   );
 }
+
