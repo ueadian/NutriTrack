@@ -10,6 +10,7 @@ import {Slider} from '@/components/ui/slider';
 import {Textarea} from '@/components/ui/textarea';
 import {Progress} from '@/components/ui/progress';
 import {extractNutritionData, ExtractNutritionDataOutput} from '@/ai/flows/extract-nutrition-data';
+import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 
 export default function Home() {
   const [caloriesTarget, setCaloriesTarget] = useState(2000);
@@ -29,22 +30,9 @@ export default function Home() {
   const [servingSize, setServingSize] = useState(1);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractNutritionDataOutput | null>(null);
-
-  const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const imageUrl = reader.result as string;
-        setCapturedImage(imageUrl);
-
-        // Call the AI function to extract nutrition data
-        const result = await extractNutritionData({photoUrl: imageUrl});
-        setExtractedData(result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const [barcode, setBarcode] = useState(''); // New state for barcode
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const calculateProgress = (intake: number, target: number) => {
     if (target === 0) return 0;
@@ -64,6 +52,27 @@ export default function Home() {
     setFatIntake(fatIntake + foodFat);
     setCarbsIntake(carbsIntake + foodCarbs);
     setSugarIntake(sugarIntake + foodSugar);
+  };
+
+  const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const imageUrl = reader.result as string;
+        setCapturedImage(imageUrl);
+
+        // Call the AI function to extract nutrition data
+        try {
+          const result = await extractNutritionData({photoUrl: imageUrl, barcode: barcode});
+          setExtractedData(result);
+        } catch (error: any) {
+          console.error('Error extracting data:', error);
+          setExtractedData(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const caloriesProgress = calculateProgress(caloriesIntake, caloriesTarget);
@@ -215,6 +224,13 @@ export default function Home() {
       {/* Label Capture */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
+        <Input
+          type="text"
+          placeholder="Enter barcode"
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+          className="mb-2"
+        />
         <Input type="file" accept="image/*" onChange={handleImageCapture} />
         {capturedImage && (
           <div className="mt-4">

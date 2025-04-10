@@ -12,7 +12,8 @@ import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 
 const ExtractNutritionDataInputSchema = z.object({
-  photoUrl: z.string().describe('The URL of the food label image.'),
+  photoUrl: z.string().optional().describe('The URL of the food label image.'),
+  barcode: z.string().optional().describe('The barcode of the food product.'),
 });
 export type ExtractNutritionDataInput = z.infer<typeof ExtractNutritionDataInputSchema>;
 
@@ -25,8 +26,60 @@ const ExtractNutritionDataOutputSchema = z.object({
 });
 export type ExtractNutritionDataOutput = z.infer<typeof ExtractNutritionDataOutputSchema>;
 
+const BarcodeLookupInputSchema = z.object({
+  barcode: z.string().describe('The barcode of the food product.'),
+});
+
+const barcodeLookupFlow = ai.defineFlow<
+  typeof BarcodeLookupInputSchema,
+  typeof ExtractNutritionDataOutputSchema
+>({
+  name: 'barcodeLookupFlow',
+  inputSchema: BarcodeLookupInputSchema,
+  outputSchema: ExtractNutritionDataOutputSchema,
+}, async input => {
+  const apiUrl = `https://world.openfoodfacts.org/api/v0/product/${input.barcode}.json`;
+  const response = await fetch(apiUrl);
+  const data = await response.json();
+
+  if (data.status === 1) {
+    const product = data.product;
+    console.log('Product data from Open Food Facts:', product);
+    return {
+      calories: product.nutriments?.energy_kcal || 0,
+      protein: product.nutriments?.protein || 0,
+      fat: product.nutriments?.fat || 0,
+      carbohydrates: product.nutriments?.carbohydrates || 0,
+      sugar: product.nutriments?.sugars || 0,
+    };
+  } else {
+    // Handle the case where the barcode is not found
+    throw new Error('Barcode not found in Open Food Facts database.');
+  }
+});
+
 export async function extractNutritionData(input: ExtractNutritionDataInput): Promise<ExtractNutritionDataOutput> {
-  return extractNutritionDataFlow(input);
+  // First, try to extract data using the barcode
+  if (input.barcode) {
+    try {
+      console.log('Attempting to extract nutrition data from barcode...');
+      const barcodeData = await barcodeLookupFlow({barcode: input.barcode});
+      console.log('Nutrition data extracted from barcode:', barcodeData);
+      return barcodeData;
+    } catch (error: any) {
+      console.error('Error extracting nutrition data from barcode:', error.message);
+      // If barcode extraction fails, proceed with image analysis
+    }
+  }
+
+  // If no barcode or barcode extraction fails, proceed with image analysis
+  if (input.photoUrl) {
+    console.log('Attempting to extract nutrition data from image...');
+    return extractNutritionDataFlow({photoUrl: input.photoUrl});
+  }
+
+  // If neither barcode nor image is available, return default values or throw an error
+  throw new Error('No barcode or photo URL provided.');
 }
 
 const prompt = ai.definePrompt({
