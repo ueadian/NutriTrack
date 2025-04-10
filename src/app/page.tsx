@@ -8,6 +8,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Textarea} from '@/components/ui/textarea';
+import {Progress} from '@/components/ui/progress';
 
 export default function Home() {
   const [caloriesTarget, setCaloriesTarget] = useState(2000);
@@ -15,6 +16,13 @@ export default function Home() {
   const [fatTarget, setFatTarget] = useState(70);
   const [carbsTarget, setCarbsTarget] = useState(250);
   const [sugarTarget, setSugarTarget] = useState(50);
+
+  const [caloriesIntake, setCaloriesIntake] = useState(0);
+  const [proteinIntake, setProteinIntake] = useState(0);
+  const [fatIntake, setFatIntake] = useState(0);
+  const [carbsIntake, setCarbsIntake] = useState(0);
+  const [sugarIntake, setSugarIntake] = useState(0);
+
   const [foodName, setFoodName] = useState('');
   const [nutritionInfo, setNutritionInfo] = useState('');
   const [servingSize, setServingSize] = useState(1);
@@ -30,6 +38,32 @@ export default function Home() {
       reader.readAsDataURL(file);
     }
   };
+
+  const calculateProgress = (intake: number, target: number) => {
+    if (target === 0) return 0;
+    return Math.min((intake / target) * 100, 100);
+  };
+
+  const trackIntake = () => {
+    // Placeholder logic - replace with actual data source
+    const foodCalories = 150 * servingSize; // Example value, replace with actual data
+    const foodProtein = 10 * servingSize; // Example value
+    const foodFat = 5 * servingSize; // Example value
+    const foodCarbs = 20 * servingSize; // Example value
+    const foodSugar = 5 * servingSize; // Example value
+
+    setCaloriesIntake(caloriesIntake + foodCalories);
+    setProteinIntake(proteinIntake + foodProtein);
+    setFatIntake(fatIntake + foodFat);
+    setCarbsIntake(carbsIntake + foodCarbs);
+    setSugarIntake(sugarIntake + foodSugar);
+  };
+
+  const caloriesProgress = calculateProgress(caloriesIntake, caloriesTarget);
+  const proteinProgress = calculateProgress(proteinIntake, proteinTarget);
+  const fatProgress = calculateProgress(fatIntake, fatTarget);
+  const carbsProgress = calculateProgress(carbsIntake, carbsTarget);
+  const sugarProgress = calculateProgress(sugarIntake, sugarTarget);
 
   return (
     <div className="container mx-auto p-4">
@@ -55,6 +89,10 @@ export default function Home() {
                   onValueChange={(value) => setCaloriesTarget(value[0])}
                 />
               </div>
+              <div className="mt-4">
+                <Progress value={caloriesProgress} />
+                <p className="text-sm mt-1">{caloriesIntake} / {caloriesTarget} kcal ({caloriesProgress.toFixed(1)}%)</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -73,6 +111,10 @@ export default function Home() {
                   step={1}
                   onValueChange={(value) => setProteinTarget(value[0])}
                 />
+              </div>
+              <div className="mt-4">
+                <Progress value={proteinProgress} />
+                <p className="text-sm mt-1">{proteinIntake} / {proteinTarget} g ({proteinProgress.toFixed(1)}%)</p>
               </div>
             </CardContent>
           </Card>
@@ -93,6 +135,10 @@ export default function Home() {
                   onValueChange={(value) => setFatTarget(value[0])}
                 />
               </div>
+              <div className="mt-4">
+                <Progress value={fatProgress} />
+                <p className="text-sm mt-1">{fatIntake} / {fatTarget} g ({fatProgress.toFixed(1)}%)</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -112,6 +158,10 @@ export default function Home() {
                   onValueChange={(value) => setCarbsTarget(value[0])}
                 />
               </div>
+              <div className="mt-4">
+                <Progress value={carbsProgress} />
+                <p className="text-sm mt-1">{carbsIntake} / {carbsTarget} g ({carbsProgress.toFixed(1)}%)</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -130,6 +180,10 @@ export default function Home() {
                   step={1}
                   onValueChange={(value) => setSugarTarget(value[0])}
                 />
+              </div>
+              <div className="mt-4">
+                <Progress value={sugarProgress} />
+                <p className="text-sm mt-1">{sugarIntake} / {sugarTarget} g ({sugarProgress.toFixed(1)}%)</p>
               </div>
             </CardContent>
           </Card>
@@ -199,7 +253,7 @@ export default function Home() {
             />
           </div>
         </div>
-        <Button className="mt-4">Track Intake</Button>
+        <Button className="mt-4" onClick={trackIntake}>Track Intake</Button>
       </section>
     </div>
   );
