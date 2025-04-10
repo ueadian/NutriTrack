@@ -54,18 +54,25 @@ const barcodeLookupFlow = ai.defineFlow<
     };
   } else {
     // Handle the case where the barcode is not found
-    throw new Error('Barcode not found in Open Food Facts database.');
+    console.warn('Barcode not found in Open Food Facts database.');
+    return null;
   }
 });
 
 export async function extractNutritionData(input: ExtractNutritionDataInput): Promise<ExtractNutritionDataOutput> {
+  let barcodeData: ExtractNutritionDataOutput | null = null;
+
   // First, try to extract data using the barcode
   if (input.barcode) {
     try {
       console.log('Attempting to extract nutrition data from barcode...');
-      const barcodeData = await barcodeLookupFlow({barcode: input.barcode});
-      console.log('Nutrition data extracted from barcode:', barcodeData);
-      return barcodeData;
+      barcodeData = await barcodeLookupFlow({barcode: input.barcode});
+      if (barcodeData) {
+        console.log('Nutrition data extracted from barcode:', barcodeData);
+        return barcodeData;
+      } else {
+        console.warn('Barcode not found, proceeding with image analysis if available.');
+      }
     } catch (error: any) {
       console.error('Error extracting nutrition data from barcode:', error.message);
       // If barcode extraction fails, proceed with image analysis
@@ -75,7 +82,12 @@ export async function extractNutritionData(input: ExtractNutritionDataInput): Pr
   // If no barcode or barcode extraction fails, proceed with image analysis
   if (input.photoUrl) {
     console.log('Attempting to extract nutrition data from image...');
-    return extractNutritionDataFlow({photoUrl: input.photoUrl});
+    try {
+      return await extractNutritionDataFlow({photoUrl: input.photoUrl, barcode: input.barcode});
+    } catch (error: any) {
+      console.error('Error extracting nutrition data from image:', error.message);
+      throw new Error('Failed to extract nutrition data from image.');
+    }
   }
 
   // If neither barcode nor image is available, return default values or throw an error
@@ -87,6 +99,7 @@ const prompt = ai.definePrompt({
   input: {
     schema: z.object({
       photoUrl: z.string().describe('The URL of the food label image.'),
+      barcode: z.string().optional().describe('The barcode if available.'),
     }),
   },
   output: {
@@ -110,9 +123,9 @@ const prompt = ai.definePrompt({
 
   Ensure that you accurately identify and extract the "Total Carbohydrates" value from the label.
 
-  Return the extracted information in a structured JSON format.
-
   Here is the food label image: {{media url=photoUrl}}
+
+  Here is the barcode value for you to use as a hint: {{barcode}}
   `,
 });
 
