@@ -12,6 +12,7 @@ import {Progress} from '@/components/ui/progress';
 import {extractNutritionData, ExtractNutritionDataOutput} from '@/ai/flows/extract-nutrition-data';
 import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 import {toast} from "@/hooks/use-toast"
+import {Icons} from "@/components/icons"
 
 export default function Home() {
   const [caloriesTarget, setCaloriesTarget] = useState(2000);
@@ -66,7 +67,10 @@ export default function Home() {
 
         // Call the AI function to extract nutrition data
         try {
+          console.log('Image recognized as label');
+          console.log('Attempting to extract nutrition data from image...');
           const result = await extractNutritionData({photoUrl: imageUrl, barcode: barcode});
+          console.log('AI Response:', result);
           setExtractedData(result);
         } catch (error: any) {
           console.error('Error extracting data:', error);
@@ -84,7 +88,10 @@ export default function Home() {
 
   const processImage = async (imageUrl: string, useBarcode: boolean = false) => {
       try {
+          console.log(`Image recognized as ${useBarcode ? 'barcode' : 'label'}`);
+          console.log(`Attempting to extract nutrition data ${useBarcode ? 'from barcode' : 'from image'}...`);
           const result = await extractNutritionData(useBarcode ? { barcode: imageUrl } : { photoUrl: imageUrl });
+          console.log(`API Response (${useBarcode ? 'Barcode' : 'Image'}):`, result);
           setExtractedData(result);
       } catch (error: any) {
           console.error(`Error extracting data ${useBarcode ? 'from barcode' : 'from image'}:`, error);
@@ -325,7 +332,7 @@ export default function Home() {
             <p>Calories: {extractedData.calories || 'N/A'}</p>
             <p>Protein: {extractedData.protein || 'N/A'} g</p>
             <p>Fat: {extractedData.fat || 'N/A'} g</p>
-            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'} g</p>
+            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'}</p>
             <p>Sugar: {extractedData.sugar || 'N/A'} g</p>
           </div>
         ) : (
