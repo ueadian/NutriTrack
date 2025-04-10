@@ -107,7 +107,7 @@ export default function Home() {
     }
   };
 
-  const processBarcode = async (imageUrl: string) => {
+  const processBarcode = async (barcodeValue: string) => {
     setApiResponse(null);
     setApiSource(null);
     setErrorMessage(null);
@@ -117,9 +117,9 @@ export default function Home() {
     setApiSource('Open Food Facts API');
 
     try {
-      console.log('Image recognized as barcode');
       console.log('Attempting to extract nutrition data from barcode...');
-      const result = await extractNutritionData({ barcode: imageUrl });
+      console.log('Barcode Value:', barcodeValue); // Log the barcode value
+      const result = await extractNutritionData({ barcode: barcodeValue });
       console.log('Open Food Facts API Response:', result);
 
       setApiResponse(result);
@@ -127,7 +127,7 @@ export default function Home() {
     } catch (error: any) {
       console.error('Error extracting data from barcode:', error);
 
-      setApiResponse({error: error.message});
+      setApiResponse({ error: error.message });
       setErrorMessage('Failed to extract nutrition data from the barcode. Please try again or enter manually.');
       setExtractedData(null);
 
@@ -145,7 +145,8 @@ export default function Home() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const imageUrl = reader.result as string;
-        await processBarcode(imageUrl);
+        // Instead of passing the image URL, pass the barcode
+        await processBarcode(barcode);
       };
       reader.readAsDataURL(file);
     }
@@ -467,4 +468,5 @@ export default function Home() {
     </div>
   );
 }
+
 
