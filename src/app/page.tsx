@@ -290,10 +290,7 @@ export default function Home() {
       {/* Barcode Capture */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Scan Barcode</h2>
-          <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
-        {hasCameraPermission ? (
-            <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
-        ) : (
+        { !(hasCameraPermission) && (
             <Alert variant="destructive">
               <AlertTitle>Camera Access Required</AlertTitle>
               <AlertDescription>
@@ -301,6 +298,7 @@ export default function Home() {
               </AlertDescription>
             </Alert>
         )}
+        <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
       </section>
 
       {/* AI Label Scanning - Display Extracted Data */}
