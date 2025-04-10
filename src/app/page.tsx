@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
@@ -11,6 +11,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {Progress} from '@/components/ui/progress';
 import {extractNutritionData, ExtractNutritionDataOutput} from '@/ai/flows/extract-nutrition-data';
 import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
+import {toast} from "@/hooks/use-toast"
 
 export default function Home() {
   const [caloriesTarget, setCaloriesTarget] = useState(2000);
@@ -33,6 +34,7 @@ export default function Home() {
   const [barcode, setBarcode] = useState(''); // New state for barcode
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const calculateProgress = (intake: number, target: number) => {
     if (target === 0) return 0;
@@ -69,6 +71,35 @@ export default function Home() {
         } catch (error: any) {
           console.error('Error extracting data:', error);
           setExtractedData(null);
+          toast({
+            variant: 'destructive',
+            title: 'Error Extracting Data',
+            description: 'Failed to extract nutrition data from the image. Please try again or enter manually.',
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBarcodeImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const imageUrl = reader.result as string;
+        try {
+          // Call the AI function to extract nutrition data using barcode
+          const result = await extractNutritionData({ barcode: imageUrl });
+          setExtractedData(result);
+        } catch (error: any) {
+          console.error('Error extracting data from barcode:', error);
+          setExtractedData(null);
+          toast({
+            variant: 'destructive',
+            title: 'Error Extracting Data from Barcode',
+            description: 'Failed to extract nutrition data from the barcode. Please try again or enter manually.',
+          });
         }
       };
       reader.readAsDataURL(file);
@@ -91,6 +122,30 @@ export default function Home() {
       setSugarIntake(sugarIntake + (extractedData.sugar || 0) * servingSize);
     }
   }, [extractedData, servingSize]);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        setCameraError('Camera access denied. Please enable camera permissions in your browser settings.');
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, []);
 
   return (
     <div className="container mx-auto p-4">
@@ -224,18 +279,27 @@ export default function Home() {
       {/* Label Capture */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
-        <Input
-          type="text"
-          placeholder="Enter barcode"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          className="mb-2"
-        />
         <Input type="file" accept="image/*" onChange={handleImageCapture} />
         {capturedImage && (
           <div className="mt-4">
             <Image src={capturedImage} alt="Captured Food Label" width={300} height={300} />
           </div>
+        )}
+      </section>
+
+      {/* Barcode Capture */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Scan Barcode</h2>
+          <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
+        {hasCameraPermission ? (
+            <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+        ) : (
+            <Alert variant="destructive">
+              <AlertTitle>Camera Access Required</AlertTitle>
+              <AlertDescription>
+                Please allow camera access to use this feature.
+              </AlertDescription>
+            </Alert>
         )}
       </section>
 
