@@ -75,6 +75,7 @@ export default function Home() {
         setCapturedImage(imageUrl);
 
         setImageType('label');
+        setApiResponse('Processing image as label...');
 
         // Call the AI function to extract nutrition data
         try {
@@ -103,30 +104,32 @@ export default function Home() {
     }
   };
 
-  const processImage = async (imageUrl: string, useBarcode: boolean = false) => {
+  const processBarcode = async (imageUrl: string) => {
     setApiResponse(null);
     setErrorMessage(null);
-    setImageType(useBarcode ? 'barcode' : 'label');
+    setImageType('barcode');
     setExtractedData(null);
+    setApiResponse('Processing image as barcode...');
+
     try {
-      console.log(`Image recognized as ${useBarcode ? 'barcode' : 'label'}`);
-      console.log(`Attempting to extract nutrition data ${useBarcode ? 'from barcode' : 'from image'}...`);
-      const result = await extractNutritionData(useBarcode ? { barcode: imageUrl } : { photoUrl: imageUrl });
-      console.log(`API Response (${useBarcode ? 'Barcode' : 'Image'}):`, result);
+      console.log('Image recognized as barcode');
+      console.log('Attempting to extract nutrition data from barcode...');
+      const result = await extractNutritionData({ barcode: imageUrl });
+      console.log('Open Food Facts API Response:', result);
 
       setApiResponse(result);
       setExtractedData(result);
     } catch (error: any) {
-      console.error(`Error extracting data ${useBarcode ? 'from barcode' : 'from image'}:`, error);
+      console.error('Error extracting data from barcode:', error);
 
       setApiResponse({error: error.message});
-      setErrorMessage(`Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`);
+      setErrorMessage('Failed to extract nutrition data from the barcode. Please try again or enter manually.');
       setExtractedData(null);
 
       toast({
         variant: 'destructive',
-        title: `Error Extracting Data ${useBarcode ? 'from Barcode' : 'from Image'}`,
-        description: `Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`,
+        title: 'Error Extracting Data from Barcode',
+        description: 'Failed to extract nutrition data from the barcode. Please try again or enter manually.',
       });
     }
   };
@@ -137,7 +140,7 @@ export default function Home() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const imageUrl = reader.result as string;
-        await processImage(imageUrl, true); // Process as barcode
+        await processBarcode(imageUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -313,13 +316,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Combined Label and Barcode Capture */}
+      {/* Food Label Capture */}
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Capture Food Label or Barcode</h2>
+        <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
         <Input type="file" accept="image/*" onChange={handleImageCapture} />
-        {capturedImage && (
+        {capturedImage && imageType === 'label' && (
           <div className="mt-4">
             <Image src={capturedImage} alt="Captured Image" width={300} height={300} />
+          </div>
+        )}
+      </section>
+
+      {/* Barcode Capture */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Capture Barcode</h2>
+        <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
+        {capturedImage && imageType === 'barcode' && (
+          <div className="mt-4">
+            <Image src={capturedImage} alt="Captured Barcode" width={300} height={300} />
           </div>
         )}
       </section>
@@ -346,7 +360,17 @@ export default function Home() {
               </AlertDescription>
             </Alert>
           ) : (
-              <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
+              <div>
+                <Label htmlFor="barcode">Enter Barcode:</Label>
+                <Input
+                    type="text"
+                    id="barcode"
+                    placeholder="Enter barcode number"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                />
+                <Button className="mt-2" onClick={() => processBarcode(barcode)}>Process Barcode</Button>
+              </div>
           )}
 
       </section>
