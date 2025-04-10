@@ -1,4 +1,4 @@
-// 'use server';
+'use server';
 
 /**
  * @fileOverview Extracts nutrition data from a food label image using OCR and AI.
@@ -7,8 +7,6 @@
  * - ExtractNutritionDataInput - The input type for the extractNutritionData function.
  * - ExtractNutritionDataOutput - The return type for the extractNutritionData function.
  */
-
-'use server';
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
@@ -56,6 +54,8 @@ const prompt = ai.definePrompt({
   - Fat (in grams)
   - Carbohydrates (in grams)
   - Sugar (in grams)
+
+  Ensure that you accurately identify and extract the "Total Carbohydrates" value from the label.
 
   Return the extracted information in a structured JSON format.
   If a field cannot be determined, omit it from the JSON output.
