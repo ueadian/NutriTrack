@@ -64,110 +64,81 @@ export default function Home() {
 
   const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setApiResponse(null);
+    setBarcode('');
     setApiSource(null);
     setErrorMessage(null);
     setImageType(null);
     setExtractedData(null);
+    setCapturedImage(URL.createObjectURL(event.target.files![0]));
 
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const imageUrl = reader.result as string;
-        setCapturedImage(imageUrl);
+    const file = event.target.files![0];
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const imageUrl = reader.result as string;
+      try {
+        const extracted = await extractNutritionData({photoUrl: imageUrl});
+        setExtractedData(extracted);
+        setApiResponse(extracted);
+        setApiSource('AI Label Scanning');
+        setImageType('label'); // Set image type to label
+      } catch (error: any) {
+        console.error('Error extracting nutrition data:', error.message);
+        setApiResponse({error: error.message});
+        setApiSource('AI Label Scanning');
+        setErrorMessage('Failed to extract nutrition data from the image. Please try again or enter manually.');
+        setImageType('label'); // Still a label
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
-        setImageType('label');
-        setApiResponse('Processing image as label...');
-        setApiSource('GenAI');
+  const handleBarcodeCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setApiResponse(null);
+    setBarcode('');
+    setApiSource(null);
+    setErrorMessage(null);
+    setImageType(null);
+    setExtractedData(null);
+    setCapturedImage(URL.createObjectURL(event.target.files![0]));
 
-        // Call the AI function to extract nutrition data
-        try {
-          console.log('Image recognized as label');
-          console.log('Attempting to extract nutrition data from image...');
-          const result = await extractNutritionData({photoUrl: imageUrl, barcode: barcode});
-          console.log('AI Response:', result);
-
-          setApiResponse(result);
-          setExtractedData(result);
-        } catch (error: any) {
-          console.error('Error extracting data:', error);
-
-          setApiResponse({error: error.message});
-          setErrorMessage('Failed to extract nutrition data from the image. Please try again or enter manually.');
-          setExtractedData(null);
-
-          toast({
-            variant: 'destructive',
-            title: 'Error Extracting Data',
-            description: 'Failed to extract nutrition data from the image. Please try again or enter manually.',
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+    const file = event.target.files![0];
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const imageUrl = reader.result as string;
+      try {
+        // Dummy barcode number
+        const extracted = await extractNutritionData({barcode: '0078742040669'});
+        setExtractedData(extracted);
+        setApiResponse(extracted);
+        setApiSource('AI Barcode Scanning');
+        setImageType('barcode'); // set to barcode
+      } catch (error: any) {
+        console.error('Error extracting nutrition data from barcode:', error.message);
+        setApiResponse({error: error.message});
+        setApiSource('AI Barcode Scanning');
+        setErrorMessage('Failed to extract nutrition data from the barcode. Please try again or enter manually.');
+        setImageType('barcode'); // Still a barcode
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const processBarcode = async (barcodeValue: string) => {
-    setApiResponse(null);
-    setApiSource(null);
-    setErrorMessage(null);
-    setImageType('barcode');
-    setExtractedData(null);
-    setApiResponse('Processing image as barcode...');
-    setApiSource('Open Food Facts API');
-
+    setBarcode(barcodeValue);
     try {
-      console.log('Attempting to extract nutrition data from barcode...');
-      console.log('Barcode Value:', barcodeValue); // Log the barcode value
-      const result = await extractNutritionData({ barcode: barcodeValue });
-      console.log('Open Food Facts API Response:', result);
-
-      setApiResponse(result);
-      setExtractedData(result);
+      const extracted = await extractNutritionData({barcode: barcodeValue});
+      setExtractedData(extracted);
+      setApiResponse(extracted);
+      setApiSource('Open Food Facts API');
+      setImageType('barcode');
     } catch (error: any) {
-      console.error('Error extracting data from barcode:', error);
-
-      setApiResponse({ error: error.message });
-      setErrorMessage('Failed to extract nutrition data from the barcode. Please try again or enter manually.');
-      setExtractedData(null);
-
-      toast({
-        variant: 'destructive',
-        title: 'Error Extracting Data from Barcode',
-        description: 'Failed to extract nutrition data from the barcode. Please try again or enter manually.',
-      });
+      console.error('Error extracting nutrition data from barcode:', error.message);
+      setApiResponse({error: error.message});
+      setApiSource('Open Food Facts API');
+      setErrorMessage('Barcode not found in Open Food Facts database.');
+      setImageType('barcode');
     }
   };
-
-  const handleBarcodeImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const imageUrl = reader.result as string;
-        // Instead of passing the image URL, pass the barcode
-        await processBarcode(barcode);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const caloriesProgress = calculateProgress(caloriesIntake, caloriesTarget);
-  const proteinProgress = calculateProgress(proteinIntake, proteinTarget);
-  const fatProgress = calculateProgress(fatIntake, fatTarget);
-  const carbsProgress = calculateProgress(carbsIntake, carbsTarget);
-  const sugarProgress = calculateProgress(sugarIntake, sugarTarget);
-
-  useEffect(() => {
-    if (extractedData) {
-      // Update intake values based on extracted data
-      setCaloriesIntake(caloriesIntake + (extractedData.calories || 0) * servingSize);
-      setProteinIntake(proteinIntake + (extractedData.protein || 0) * servingSize);
-      setFatIntake(fatIntake + (extractedData.fat || 0) * servingSize);
-      setCarbsIntake(carbsIntake + (extractedData.carbohydrates || 0) * servingSize);
-      setSugarIntake(sugarIntake + (extractedData.sugar || 0) * servingSize);
-    }
-  }, [extractedData, servingSize]);
 
   useEffect(() => {
     const getCameraPermission = async () => {
@@ -181,7 +152,6 @@ export default function Home() {
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setCameraError('Camera access denied. Please enable camera permissions in your browser settings.');
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
@@ -194,213 +164,241 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">NutriSnap</h1>
+    <main className="flex min-h-screen flex-col items-center p-12">
+      <h1 className="text-4xl font-bold mb-8">NutriTrack</h1>
 
-      {/* Target Setting */}
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Set Daily Targets</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <h2 className="text-2xl font-semibold mb-4">Daily Targets</h2>
+        <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Calories</CardTitle>
-              <CardDescription>Set your daily calorie target.</CardDescription>
+              <CardDescription>Set your daily calorie goal</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="calories">{caloriesTarget} kcal</Label>
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="calories">Target: {caloriesTarget} kcal</Label>
                 <Slider
                   id="calories"
                   defaultValue={[caloriesTarget]}
                   max={3000}
-                  step={10}
+                  step={100}
                   onValueChange={(value) => setCaloriesTarget(value[0])}
                 />
               </div>
-              <div className="mt-4">
-                <Progress value={caloriesProgress} />
-                <p className="text-sm mt-1">
-                  {caloriesIntake} / {caloriesTarget} kcal ({caloriesProgress.toFixed(1)}%)
-                </p>
-              </div>
+              <Progress value={calculateProgress(caloriesIntake, caloriesTarget)} />
+              <p>Intake: {caloriesIntake} kcal</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Protein</CardTitle>
-              <CardDescription>Set your daily protein target.</CardDescription>
+              <CardDescription>Set your daily protein goal</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="protein">{proteinTarget} g</Label>
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="protein">Target: {proteinTarget} g</Label>
                 <Slider
                   id="protein"
                   defaultValue={[proteinTarget]}
                   max={200}
-                  step={1}
+                  step={5}
                   onValueChange={(value) => setProteinTarget(value[0])}
                 />
               </div>
-              <div className="mt-4">
-                <Progress value={proteinProgress} />
-                <p className="text-sm mt-1">
-                  {proteinIntake} / {proteinTarget} g ({proteinProgress.toFixed(1)}%)
-                </p>
-              </div>
+              <Progress value={calculateProgress(proteinIntake, proteinTarget)} />
+              <p>Intake: {proteinIntake} g</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Fat</CardTitle>
-              <CardDescription>Set your daily fat target.</CardDescription>
+              <CardDescription>Set your daily fat goal</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="fat">{fatTarget} g</Label>
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="fat">Target: {fatTarget} g</Label>
                 <Slider
                   id="fat"
                   defaultValue={[fatTarget]}
                   max={150}
-                  step={1}
+                  step={5}
                   onValueChange={(value) => setFatTarget(value[0])}
                 />
               </div>
-              <div className="mt-4">
-                <Progress value={fatProgress} />
-                <p className="text-sm mt-1">{fatIntake} / {fatTarget} g ({fatProgress.toFixed(1)}%)</p>
-              </div>
+              <Progress value={calculateProgress(fatIntake, fatTarget)} />
+              <p>Intake: {fatIntake} g</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Carbs</CardTitle>
-              <CardDescription>Set your daily carbs target.</CardDescription>
+              <CardDescription>Set your daily carbs goal</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="carbs">{carbsTarget} g</Label>
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="carbs">Target: {carbsTarget} g</Label>
                 <Slider
                   id="carbs"
                   defaultValue={[carbsTarget]}
                   max={400}
-                  step={1}
+                  step={10}
                   onValueChange={(value) => setCarbsTarget(value[0])}
                 />
               </div>
-              <div className="mt-4">
-                <Progress value={carbsProgress} />
-                <p className="text-sm mt-1">{carbsIntake} / {carbsTarget} g ({carbsProgress.toFixed(1)}%)</p>
-              </div>
+              <Progress value={calculateProgress(carbsIntake, carbsTarget)} />
+              <p>Intake: {carbsIntake} g</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Sugar</CardTitle>
-              <CardDescription>Set your daily sugar target.</CardDescription>
+              <CardDescription>Set your daily sugar goal</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="sugar">{sugarTarget} g</Label>
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="sugar">Target: {sugarTarget} g</Label>
                 <Slider
                   id="sugar"
                   defaultValue={[sugarTarget]}
                   max={100}
-                  step={1}
+                  step={5}
                   onValueChange={(value) => setSugarTarget(value[0])}
                 />
               </div>
-              <div className="mt-4">
-                <Progress value={sugarProgress} />
-                <p className="text-sm mt-1">{sugarIntake} / {sugarTarget} g ({sugarProgress.toFixed(1)}%)</p>
-              </div>
+              <Progress value={calculateProgress(sugarIntake, sugarTarget)} />
+              <p>Intake: {sugarIntake} g</p>
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* Food Label Capture */}
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
-        <Input type="file" accept="image/*" onChange={handleImageCapture} />
-        {capturedImage && imageType === 'label' && (
-          <div className="mt-4">
-            <Image src={capturedImage} alt="Captured Image" width={300} height={300} />
-          </div>
-        )}
-      </section>
-
-      {/* Barcode Capture */}
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Capture Barcode</h2>
-        <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
-        {capturedImage && imageType === 'barcode' && (
-          <div className="mt-4">
-            <Image src={capturedImage} alt="Captured Barcode" width={300} height={300} />
-          </div>
-        )}
-      </section>
-
-      {/* Scan Barcode */}
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Scan Barcode</h2>
-        {hasCameraPermission ? (
-          <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
-        ) : (
-          <Alert variant="destructive">
-            <AlertTitle>Camera Access Required</AlertTitle>
-            <AlertDescription>
-              Please allow camera access to use this feature.
-            </AlertDescription>
-          </Alert>
-        )}
-        {/* Conditionally render the file input based on camera permission */}
-        {cameraError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Camera Error</AlertTitle>
-              <AlertDescription>
-                {cameraError}
-              </AlertDescription>
-            </Alert>
-          ) : (
-              <div>
-                <Label htmlFor="barcode">Enter Barcode:</Label>
-                <Input
+        <h2 className="text-2xl font-semibold mb-4">Track Your Intake</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Food Manually</CardTitle>
+              <CardDescription>Enter food details to track your intake</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div>
+                  <Label htmlFor="food-name">Food Name</Label>
+                  <Input
                     type="text"
-                    id="barcode"
-                    placeholder="Enter barcode number"
-                    value={barcode}
-                    onChange={(e) => setBarcode(e.target.value)}
-                />
-                <Button className="mt-2" onClick={() => processBarcode(barcode)}>Process Barcode</Button>
+                    id="food-name"
+                    value={foodName}
+                    onChange={(e) => setFoodName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nutrition-info">Nutrition Information</Label>
+                  <Textarea
+                    id="nutrition-info"
+                    value={nutritionInfo}
+                    onChange={(e) => setNutritionInfo(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="serving-size">Serving Size</Label>
+                  <Input
+                    type="number"
+                    id="serving-size"
+                    value={servingSize}
+                    onChange={(e) => setServingSize(Number(e.target.value))}
+                  />
+                </div>
+                <Button onClick={trackIntake}>Add to Daily Intake</Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Capture Food Label</CardTitle>
+              <CardDescription>Upload an image of a food label to automatically extract nutrition information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                  type="file"
+                  id="image-upload"
+                  accept="image/*"
+                  onChange={handleImageCapture}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Scan Barcode</CardTitle>
+              <CardDescription>Upload an image of a barcode to automatically extract nutrition information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                  type="file"
+                  id="barcode-upload"
+                  accept="image/*"
+                  onChange={handleBarcodeCapture}
+              />
+              { !(hasCameraPermission) && (
+                  <Alert variant="destructive">
+                            <AlertTitle>Camera Access Required</AlertTitle>
+                            <AlertDescription>
+                              Please allow camera access to use this feature.
+                            </AlertDescription>
+                    </Alert>
+              )
+              }
+              <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+               <div>
+                 <Label htmlFor="barcode">Enter Barcode:</Label>
+                 <Input
+                     type="text"
+                     id="barcode"
+                     placeholder="Enter barcode number"
+                     value={barcode}
+                     onChange={(e) => setBarcode(e.target.value)}
+                     onBlur={() => processBarcode(barcode)}
+                 />
+               </div>
+            </CardContent>
+          </Card>
+
+          {extractedData && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Extracted Nutrition Data</CardTitle>
+                <CardDescription>
+                  Nutrition information extracted from the image or barcode.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {extractedData ? (
+                  <div className="grid gap-2">
+                    <p>Calories: {extractedData.calories} kcal</p>
+                    <p>Protein: {extractedData.protein} g</p>
+                    <p>Fat: {extractedData.fat} g</p>
+                    <p>Carbohydrates: {extractedData.carbohydrates} g</p>
+                    <p>Sugar: {extractedData.sugar} g</p>
+                  </div>
+                ) : (
+                  <p>No data extracted.</p>
+                )}
+              </CardContent>
+            </Card>
           )}
-
+        </div>
       </section>
 
-      {/* AI Label Scanning - Display Extracted Data */}
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">AI Label Scanning</h2>
-        {extractedData ? (
-          <div>
-            <p>Calories: {extractedData.calories || 'N/A'}</p>
-            <p>Protein: {extractedData.protein || 'N/A'} g</p>
-            <p>Fat: {extractedData.fat || 'N/A'} g</p>
-            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'} g</p>
-            <p>Sugar: {extractedData.sugar || 'N/A'} g</p>
-          </div>
-        ) : (
-          <p>No data extracted yet. Please upload a food label image.</p>
-        )}
-      </section>
-
-      {/* Debugging Information */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Debugging Information</h2>
         {imageType && <p>Image Type: {imageType}</p>}
+        {barcode && <p>Barcode Number: {barcode}</p>}
         {apiResponse && (
           <div>
             <p>API Response ({apiSource}):</p>
@@ -414,59 +412,7 @@ export default function Home() {
           </Alert>
         )}
       </section>
-
-      {/* Manual Entry & Storage */}
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Manual Entry &amp; Storage</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="foodName">Food Name</Label>
-            <Input
-              type="text"
-              id="foodName"
-              placeholder="Enter food name"
-              value={foodName}
-              onChange={(e) => setFoodName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="nutritionInfo">Nutrition Information</Label>
-            <Textarea
-              id="nutritionInfo"
-              placeholder="Enter nutrition information"
-              value={nutritionInfo}
-              onChange={(e) => setNutritionInfo(e.target.value)}
-            />
-          </div>
-        </div>
-        <Button className="mt-4">Store Food Item</Button>
-      </section>
-
-      {/* Serving Size Tracking */}
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Serving Size Tracking</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="foodItem">Select Food Item</Label>
-            <Input type="text" id="foodItem" placeholder="Select food item" />
-          </div>
-          <div>
-            <Label htmlFor="servingSize">Serving Size</Label>
-            <Input
-              type="number"
-              id="servingSize"
-              placeholder="Enter serving size"
-              value={servingSize}
-              onChange={(e) => setServingSize(Number(e.target.value))}
-            />
-          </div>
-        </div>
-        <Button className="mt-4" onClick={trackIntake}>
-          Track Intake
-        </Button>
-      </section>
-    </div>
+    </main>
   );
 }
-
 
