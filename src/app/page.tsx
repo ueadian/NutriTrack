@@ -37,6 +37,10 @@ export default function Home() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const [imageType, setImageType] = useState<string | null>(null); // "label" or "barcode"
+  const [apiResponse, setApiResponse] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const calculateProgress = (intake: number, target: number) => {
     if (target === 0) return 0;
     return Math.min((intake / target) * 100, 100);
@@ -58,6 +62,11 @@ export default function Home() {
   };
 
   const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setApiResponse(null);
+    setErrorMessage(null);
+    setImageType(null);
+    setExtractedData(null);
+
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -65,16 +74,24 @@ export default function Home() {
         const imageUrl = reader.result as string;
         setCapturedImage(imageUrl);
 
+        setImageType('label');
+
         // Call the AI function to extract nutrition data
         try {
           console.log('Image recognized as label');
           console.log('Attempting to extract nutrition data from image...');
           const result = await extractNutritionData({photoUrl: imageUrl, barcode: barcode});
           console.log('AI Response:', result);
+
+          setApiResponse(result);
           setExtractedData(result);
         } catch (error: any) {
           console.error('Error extracting data:', error);
+
+          setApiResponse({error: error.message});
+          setErrorMessage('Failed to extract nutrition data from the image. Please try again or enter manually.');
           setExtractedData(null);
+
           toast({
             variant: 'destructive',
             title: 'Error Extracting Data',
@@ -87,33 +104,43 @@ export default function Home() {
   };
 
   const processImage = async (imageUrl: string, useBarcode: boolean = false) => {
-      try {
-          console.log(`Image recognized as ${useBarcode ? 'barcode' : 'label'}`);
-          console.log(`Attempting to extract nutrition data ${useBarcode ? 'from barcode' : 'from image'}...`);
-          const result = await extractNutritionData(useBarcode ? { barcode: imageUrl } : { photoUrl: imageUrl });
-          console.log(`API Response (${useBarcode ? 'Barcode' : 'Image'}):`, result);
-          setExtractedData(result);
-      } catch (error: any) {
-          console.error(`Error extracting data ${useBarcode ? 'from barcode' : 'from image'}:`, error);
-          setExtractedData(null);
-          toast({
-              variant: 'destructive',
-              title: `Error Extracting Data ${useBarcode ? 'from Barcode' : 'from Image'}`,
-              description: `Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`,
-          });
-      }
+    setApiResponse(null);
+    setErrorMessage(null);
+    setImageType(useBarcode ? 'barcode' : 'label');
+    setExtractedData(null);
+    try {
+      console.log(`Image recognized as ${useBarcode ? 'barcode' : 'label'}`);
+      console.log(`Attempting to extract nutrition data ${useBarcode ? 'from barcode' : 'from image'}...`);
+      const result = await extractNutritionData(useBarcode ? { barcode: imageUrl } : { photoUrl: imageUrl });
+      console.log(`API Response (${useBarcode ? 'Barcode' : 'Image'}):`, result);
+
+      setApiResponse(result);
+      setExtractedData(result);
+    } catch (error: any) {
+      console.error(`Error extracting data ${useBarcode ? 'from barcode' : 'from image'}:`, error);
+
+      setApiResponse({error: error.message});
+      setErrorMessage(`Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`);
+      setExtractedData(null);
+
+      toast({
+        variant: 'destructive',
+        title: `Error Extracting Data ${useBarcode ? 'from Barcode' : 'from Image'}`,
+        description: `Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`,
+      });
+    }
   };
 
   const handleBarcodeImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-              const imageUrl = reader.result as string;
-              await processImage(imageUrl, true); // Process as barcode
-          };
-          reader.readAsDataURL(file);
-      }
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const imageUrl = reader.result as string;
+        await processImage(imageUrl, true); // Process as barcode
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const caloriesProgress = calculateProgress(caloriesIntake, caloriesTarget);
@@ -332,11 +359,29 @@ export default function Home() {
             <p>Calories: {extractedData.calories || 'N/A'}</p>
             <p>Protein: {extractedData.protein || 'N/A'} g</p>
             <p>Fat: {extractedData.fat || 'N/A'} g</p>
-            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'}</p>
+            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'} g</p>
             <p>Sugar: {extractedData.sugar || 'N/A'} g</p>
           </div>
         ) : (
           <p>No data extracted yet. Please upload a food label image.</p>
+        )}
+      </section>
+
+      {/* Debugging Information */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Debugging Information</h2>
+        {imageType && <p>Image Type: {imageType}</p>}
+        {apiResponse && (
+          <div>
+            <p>API Response:</p>
+            <pre>{JSON.stringify(apiResponse, null, 2)}</pre>
+          </div>
+        )}
+        {errorMessage && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
         )}
       </section>
 
