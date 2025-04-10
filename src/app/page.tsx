@@ -1,3 +1,206 @@
+'use client';
+
+import Image from 'next/image';
+import {useState} from 'react';
+import {Button} from '@/components/ui/button';
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
+import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
+import {Slider} from '@/components/ui/slider';
+import {Textarea} from '@/components/ui/textarea';
+
 export default function Home() {
-  return <></>;
+  const [caloriesTarget, setCaloriesTarget] = useState(2000);
+  const [proteinTarget, setProteinTarget] = useState(50);
+  const [fatTarget, setFatTarget] = useState(70);
+  const [carbsTarget, setCarbsTarget] = useState(250);
+  const [sugarTarget, setSugarTarget] = useState(50);
+  const [foodName, setFoodName] = useState('');
+  const [nutritionInfo, setNutritionInfo] = useState('');
+  const [servingSize, setServingSize] = useState(1);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+
+  const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCapturedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">NutriSnap</h1>
+
+      {/* Target Setting */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Set Daily Targets</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Calories</CardTitle>
+              <CardDescription>Set your daily calorie target.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="calories">{caloriesTarget} kcal</Label>
+                <Slider
+                  id="calories"
+                  defaultValue={[caloriesTarget]}
+                  max={3000}
+                  step={10}
+                  onValueChange={(value) => setCaloriesTarget(value[0])}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Protein</CardTitle>
+              <CardDescription>Set your daily protein target.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="protein">{proteinTarget} g</Label>
+                <Slider
+                  id="protein"
+                  defaultValue={[proteinTarget]}
+                  max={200}
+                  step={1}
+                  onValueChange={(value) => setProteinTarget(value[0])}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Fat</CardTitle>
+              <CardDescription>Set your daily fat target.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="fat">{fatTarget} g</Label>
+                <Slider
+                  id="fat"
+                  defaultValue={[fatTarget]}
+                  max={150}
+                  step={1}
+                  onValueChange={(value) => setFatTarget(value[0])}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Carbs</CardTitle>
+              <CardDescription>Set your daily carbs target.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="carbs">{carbsTarget} g</Label>
+                <Slider
+                  id="carbs"
+                  defaultValue={[carbsTarget]}
+                  max={400}
+                  step={1}
+                  onValueChange={(value) => setCarbsTarget(value[0])}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sugar</CardTitle>
+              <CardDescription>Set your daily sugar target.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sugar">{sugarTarget} g</Label>
+                <Slider
+                  id="sugar"
+                  defaultValue={[sugarTarget]}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => setSugarTarget(value[0])}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Label Capture */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
+        <Input type="file" accept="image/*" onChange={handleImageCapture} />
+        {capturedImage && (
+          <div className="mt-4">
+            <Image src={capturedImage} alt="Captured Food Label" width={300} height={300} />
+          </div>
+        )}
+      </section>
+
+      {/* AI Label Scanning - Placeholder */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">AI Label Scanning</h2>
+        <p>AI will scan the label and extract data here.</p>
+      </section>
+
+      {/* Manual Entry & Storage */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Manual Entry &amp; Storage</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="foodName">Food Name</Label>
+            <Input
+              type="text"
+              id="foodName"
+              placeholder="Enter food name"
+              value={foodName}
+              onChange={(e) => setFoodName(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="nutritionInfo">Nutrition Information</Label>
+            <Textarea
+              id="nutritionInfo"
+              placeholder="Enter nutrition information"
+              value={nutritionInfo}
+              onChange={(e) => setNutritionInfo(e.target.value)}
+            />
+          </div>
+        </div>
+        <Button className="mt-4">Store Food Item</Button>
+      </section>
+
+      {/* Serving Size Tracking */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Serving Size Tracking</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="foodItem">Select Food Item</Label>
+            <Input type="text" id="foodItem" placeholder="Select food item" />
+          </div>
+          <div>
+            <Label htmlFor="servingSize">Serving Size</Label>
+            <Input
+              type="number"
+              id="servingSize"
+              placeholder="Enter serving size"
+              value={servingSize}
+              onChange={(e) => setServingSize(Number(e.target.value))}
+            />
+          </div>
+        </div>
+        <Button className="mt-4">Track Intake</Button>
+      </section>
+    </div>
+  );
 }
