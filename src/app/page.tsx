@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
@@ -9,6 +9,7 @@ import {Label} from '@/components/ui/label';
 import {Slider} from '@/components/ui/slider';
 import {Textarea} from '@/components/ui/textarea';
 import {Progress} from '@/components/ui/progress';
+import {extractNutritionData, ExtractNutritionDataOutput} from '@/ai/flows/extract-nutrition-data';
 
 export default function Home() {
   const [caloriesTarget, setCaloriesTarget] = useState(2000);
@@ -27,13 +28,19 @@ export default function Home() {
   const [nutritionInfo, setNutritionInfo] = useState('');
   const [servingSize, setServingSize] = useState(1);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [extractedData, setExtractedData] = useState<ExtractNutritionDataOutput | null>(null);
 
-  const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setCapturedImage(reader.result as string);
+      reader.onloadend = async () => {
+        const imageUrl = reader.result as string;
+        setCapturedImage(imageUrl);
+
+        // Call the AI function to extract nutrition data
+        const result = await extractNutritionData({photoUrl: imageUrl});
+        setExtractedData(result);
       };
       reader.readAsDataURL(file);
     }
@@ -65,6 +72,17 @@ export default function Home() {
   const carbsProgress = calculateProgress(carbsIntake, carbsTarget);
   const sugarProgress = calculateProgress(sugarIntake, sugarTarget);
 
+  useEffect(() => {
+    if (extractedData) {
+      // Update intake values based on extracted data
+      setCaloriesIntake(caloriesIntake + (extractedData.calories || 0) * servingSize);
+      setProteinIntake(proteinIntake + (extractedData.protein || 0) * servingSize);
+      setFatIntake(fatIntake + (extractedData.fat || 0) * servingSize);
+      setCarbsIntake(carbsIntake + (extractedData.carbohydrates || 0) * servingSize);
+      setSugarIntake(sugarIntake + (extractedData.sugar || 0) * servingSize);
+    }
+  }, [extractedData, servingSize]);
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">NutriSnap</h1>
@@ -91,7 +109,9 @@ export default function Home() {
               </div>
               <div className="mt-4">
                 <Progress value={caloriesProgress} />
-                <p className="text-sm mt-1">{caloriesIntake} / {caloriesTarget} kcal ({caloriesProgress.toFixed(1)}%)</p>
+                <p className="text-sm mt-1">
+                  {caloriesIntake} / {caloriesTarget} kcal ({caloriesProgress.toFixed(1)}%)
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -114,7 +134,9 @@ export default function Home() {
               </div>
               <div className="mt-4">
                 <Progress value={proteinProgress} />
-                <p className="text-sm mt-1">{proteinIntake} / {proteinTarget} g ({proteinProgress.toFixed(1)}%)</p>
+                <p className="text-sm mt-1">
+                  {proteinIntake} / {proteinTarget} g ({proteinProgress.toFixed(1)}%)
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -201,10 +223,20 @@ export default function Home() {
         )}
       </section>
 
-      {/* AI Label Scanning - Placeholder */}
+      {/* AI Label Scanning - Display Extracted Data */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">AI Label Scanning</h2>
-        <p>AI will scan the label and extract data here.</p>
+        {extractedData ? (
+          <div>
+            <p>Calories: {extractedData.calories || 'N/A'}</p>
+            <p>Protein: {extractedData.protein || 'N/A'} g</p>
+            <p>Fat: {extractedData.fat || 'N/A'} g</p>
+            <p>Carbohydrates: {extractedData.carbohydrates || 'N/A'} g</p>
+            <p>Sugar: {extractedData.sugar || 'N/A'} g</p>
+          </div>
+        ) : (
+          <p>No data extracted yet. Please upload a food label image.</p>
+        )}
       </section>
 
       {/* Manual Entry & Storage */}
@@ -253,7 +285,9 @@ export default function Home() {
             />
           </div>
         </div>
-        <Button className="mt-4" onClick={trackIntake}>Track Intake</Button>
+        <Button className="mt-4" onClick={trackIntake}>
+          Track Intake
+        </Button>
       </section>
     </div>
   );
