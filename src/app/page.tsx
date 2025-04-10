@@ -82,28 +82,31 @@ export default function Home() {
     }
   };
 
-  const handleBarcodeImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const imageUrl = reader.result as string;
-        try {
-          // Call the AI function to extract nutrition data using barcode
-          const result = await extractNutritionData({ barcode: imageUrl });
+  const processImage = async (imageUrl: string, useBarcode: boolean = false) => {
+      try {
+          const result = await extractNutritionData(useBarcode ? { barcode: imageUrl } : { photoUrl: imageUrl });
           setExtractedData(result);
-        } catch (error: any) {
-          console.error('Error extracting data from barcode:', error);
+      } catch (error: any) {
+          console.error(`Error extracting data ${useBarcode ? 'from barcode' : 'from image'}:`, error);
           setExtractedData(null);
           toast({
-            variant: 'destructive',
-            title: 'Error Extracting Data from Barcode',
-            description: 'Failed to extract nutrition data from the barcode. Please try again or enter manually.',
+              variant: 'destructive',
+              title: `Error Extracting Data ${useBarcode ? 'from Barcode' : 'from Image'}`,
+              description: `Failed to extract nutrition data ${useBarcode ? 'from the barcode' : 'from the image'}. Please try again or enter manually.`,
           });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+      }
+  };
+
+  const handleBarcodeImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+              const imageUrl = reader.result as string;
+              await processImage(imageUrl, true); // Process as barcode
+          };
+          reader.readAsDataURL(file);
+      }
   };
 
   const caloriesProgress = calculateProgress(caloriesIntake, caloriesTarget);
@@ -276,29 +279,42 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Label Capture */}
+      {/* Combined Label and Barcode Capture */}
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Capture Food Label</h2>
+        <h2 className="text-xl font-semibold mb-2">Capture Food Label or Barcode</h2>
         <Input type="file" accept="image/*" onChange={handleImageCapture} />
         {capturedImage && (
           <div className="mt-4">
-            <Image src={capturedImage} alt="Captured Food Label" width={300} height={300} />
+            <Image src={capturedImage} alt="Captured Image" width={300} height={300} />
           </div>
         )}
       </section>
 
-      {/* Barcode Capture */}
+      {/* Scan Barcode */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Scan Barcode</h2>
-        { !(hasCameraPermission) && (
+        {hasCameraPermission ? (
+          <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+        ) : (
+          <Alert variant="destructive">
+            <AlertTitle>Camera Access Required</AlertTitle>
+            <AlertDescription>
+              Please allow camera access to use this feature.
+            </AlertDescription>
+          </Alert>
+        )}
+        {/* Conditionally render the file input based on camera permission */}
+        {cameraError ? (
             <Alert variant="destructive">
-              <AlertTitle>Camera Access Required</AlertTitle>
+              <AlertTitle>Camera Error</AlertTitle>
               <AlertDescription>
-                Please allow camera access to use this feature.
+                {cameraError}
               </AlertDescription>
             </Alert>
-        )}
-        <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+          ) : (
+              <Input type="file" accept="image/*" onChange={handleBarcodeImageCapture} />
+          )}
+
       </section>
 
       {/* AI Label Scanning - Display Extracted Data */}
